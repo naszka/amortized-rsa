@@ -446,7 +446,7 @@ class RNNEncoder(nn.Module):
         seq = seq.transpose(0, 1)
 
         # embed your sequences
-        embed_seq = seq.cuda() @ self.embedding.weight
+        embed_seq = self.embedding(seq)
 
         packed = rnn_utils.pack_padded_sequence(
             embed_seq,
