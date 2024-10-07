@@ -2,7 +2,7 @@
 Generate shapeworld reference games
 """
 
-from shapely.geometry import Point, box
+from shapely.geometry import Point, box, Polygon
 from shapely import affinity
 import numpy as np
 from numpy import random
@@ -23,9 +23,9 @@ SIZE_MIN, SIZE_MAX = (3, 8)
 
 TWOFIVEFIVE = np.float32(255)
 
-SHAPES = ['circle', 'square', 'rectangle', 'ellipse']
+SHAPES = ['circle', 'square', 'rectangle', 'ellipse', 'triangle']
 COLORS = ['red', 'blue', 'green', 'yellow', 'white', 'gray']
-VOCAB = ['gray', 'shape', 'blue', 'square', 'circle', 'green', 'red', 'rectangle', 'yellow', 'ellipse', 'white']
+VOCAB = SHAPES + COLORS
 BRUSHES = {c: aggdraw.Brush(c) for c in COLORS}
 PENS = {c: aggdraw.Pen(c) for c in COLORS}
 
@@ -134,7 +134,8 @@ class Ellipse(Shape):
         self.shape = shape
 
         #  self.coords = [int(x) for x in self.shape.bounds]
-        self.coords = np.round(np.array(self.shape.boundary).astype(np.int))
+        # self.coords = np.round(np.array(self.shape.boundary).astype(np.int))
+        self.coords = np.round(np.array(self.shape.boundary.coords).astype(np.int))
         #  print(len(np.array(self.shape.convex_hull)))
         #  print(len(np.array(self.shape.convex_hull.boundary)))
         #  print(len(np.array(self.shape.exterior)))
@@ -191,12 +192,33 @@ class Square(Rectangle):
             np.array(self.shape.exterior.coords)[:-1].flatten()).astype(
                 np.int).tolist()
 
+class Triangle(Shape):
+
+    def init_shape(self):
+        self.dx = rand_size_2() * 1.5
+
+
+        shape = Polygon([(self.x, self.y), (self.x+self.dx, self.y), (self.x, self.y+self.dx) ] )
+        # Rotation
+        shape = affinity.rotate(shape, random.randint(90))
+        self.shape = shape
+
+        # Get coords
+        self.coords = np.round(
+            np.array(self.shape.exterior.coords)[:-1].flatten()).astype(
+            np.int).tolist()
+
+    def draw(self, image):
+        image.draw.polygon(self.coords, BRUSHES[self.color], PENS[self.color])
+
+
 
 SHAPE_IMPLS = {
     'circle': Circle,
     'ellipse': Ellipse,
     'square': Square,
     'rectangle': Rectangle,
+    'triangle': Triangle
     # TODO: Triangle, semicircle
 }
 
@@ -455,6 +477,7 @@ def generate_spatial(mp_args):
         n_distract = n_images  # Never run out of distractors
     idx_rand = list(range(n_images))
     # random.shuffle(idx_rand)
+
     for w_idx in idx_rand:
         if n_target > 0:
             label = 1
@@ -547,7 +570,7 @@ def generate_single(mp_args):
         color_, shape_ = new_config
         if shape_ is None:
             shape_ = random_shape()
-            
+
         if context != None:
             target_color, target_shape = config
             if label == 1:
@@ -609,7 +632,7 @@ def generate_single(mp_args):
             """
             if label == 1:
                 shape_ = 'square'"""
-            
+
             # color generalization - train
             """
             if color_ == 'red':
@@ -643,17 +666,17 @@ def generate_single(mp_args):
                 combo = combos[np.random.randint(0,len(combos))]
                 color_ = combo[0]
                 shape_ = combo[1]"""
-                        
+
         shapes.append(shape_)
         colors.append(color_)
         shape = SHAPE_IMPLS[shape_](color=color_)
-        
+
         # Create image and draw shape
         img = I()
         img.draw_shapes([shape])
         imgs[w_idx] = img.array()
         labels[w_idx] = label
-    
+
     if colors.count(colors[0])==1 and shapes.count(shapes[0])==1:
         if np.random.randint(0,2) == 0:
             config = SingleConfig(colors[0],None)
@@ -665,7 +688,7 @@ def generate_single(mp_args):
         config = SingleConfig(None,shapes[0])
     else:
         config = SingleConfig(colors[0],shapes[0])
-        
+
     return imgs, labels, config, i
 
 
@@ -703,7 +726,6 @@ def generate(n,
     all_imgs = np.zeros((n, n_images, 64, 64, 3), dtype=np.uint8)
     all_labels = np.zeros((n, n_images), dtype=np.uint8)
     configs = []
-
     mp_args = [(n_images, correct, i, data_type, context) for i in range(n)]
     if do_mp:
         gen_iter = pool.imap(img_func, mp_args)
@@ -711,7 +733,7 @@ def generate(n,
         gen_iter = map(img_func, mp_args)
     if verbose:
         gen_iter = tqdm(gen_iter, total=n)
-    
+
     for imgs, labels, config, i in gen_iter:
         all_imgs[i, ] = imgs
         all_labels[i, ] = labels
@@ -811,7 +833,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    data_dir = './data/single/reference-1000-'
+    data_dir = '/Users/knaszad/shapeworld/data/reference-1000-'
     files = [data_dir+'0.npz', data_dir+'1.npz', data_dir+'2.npz', data_dir+'3.npz', data_dir+'4.npz',data_dir+'5.npz', data_dir+'6.npz', data_dir+'7.npz', data_dir+'8.npz', data_dir+'9.npz',data_dir+'10.npz', data_dir+'11.npz', data_dir+'12.npz', data_dir+'13.npz', data_dir+'14.npz',data_dir+'15.npz', data_dir+'16.npz', data_dir+'17.npz', data_dir+'18.npz', data_dir+'19.npz',data_dir+'20.npz', data_dir+'21.npz', data_dir+'22.npz', data_dir+'23.npz', data_dir+'24.npz',data_dir+'25.npz', data_dir+'26.npz', data_dir+'27.npz', data_dir+'28.npz', data_dir+'29.npz',data_dir+'30.npz', data_dir+'31.npz', data_dir+'32.npz', data_dir+'33.npz', data_dir+'34.npz',data_dir+'35.npz', data_dir+'36.npz', data_dir+'37.npz', data_dir+'38.npz', data_dir+'39.npz',data_dir+'40.npz', data_dir+'41.npz', data_dir+'42.npz', data_dir+'43.npz', data_dir+'44.npz',data_dir+'45.npz', data_dir+'46.npz', data_dir+'47.npz', data_dir+'48.npz', data_dir+'49.npz',data_dir+'50.npz', data_dir+'51.npz', data_dir+'52.npz', data_dir+'53.npz', data_dir+'54.npz',data_dir+'70.npz', data_dir+'71.npz', data_dir+'72.npz', data_dir+'73.npz', data_dir+'74.npz']
     for file in files:
         data = generate(
